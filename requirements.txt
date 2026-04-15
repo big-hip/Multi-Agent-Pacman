@@ -1,0 +1,4 @@
+# CS188 Project 2 - Multi-Agent Pacman
+# External Python dependencies: none
+# The project uses only Python standard library modules.
+# Verified runtime in this workspace: Python 3.13.12 (Conda base)

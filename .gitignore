@@ -80,7 +80,7 @@ Thumbs.db
 
 # Ignore compiled autograder outputs if any
 *.out
-*.txt
+# *.txt
 
 # keep project reports and code tracked
 # (do not ignore .md or .py files)
