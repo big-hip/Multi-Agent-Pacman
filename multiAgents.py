@@ -299,6 +299,97 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
 
         return bestAction
 
+class ContestAgent(MultiAgentSearchAgent):
+    """
+    A risk-aware expectimax agent for the optional contest setting.
+
+    Unlike ExpectimaxAgent, which treats every ghost action as uniformly random,
+    this agent gives higher probability to actions that match DirectionalGhost:
+    active ghosts tend to move toward Pacman, while scared ghosts tend to move
+    away.  The Pacman layer still chooses the action with the highest expected
+    utility.
+    """
+
+    def __init__(self, evalFn='contestEvaluationFunction', depth='2'):
+        super().__init__(evalFn, depth)
+
+    def getAction(self, gameState: GameState):
+        numAgents = gameState.getNumAgents()
+
+        def legal_actions_without_stop(state, agentIndex):
+            actions = state.getLegalActions(agentIndex)
+            if agentIndex == 0 and len(actions) > 1 and Directions.STOP in actions:
+                actions = [action for action in actions if action != Directions.STOP]
+            return actions
+
+        def ghost_action_weights(state, agentIndex, legalActions):
+            ghostState = state.getGhostState(agentIndex)
+            pacmanPos = state.getPacmanPosition()
+            scoredActions = []
+
+            for action in legalActions:
+                successor = state.generateSuccessor(agentIndex, action)
+                ghostPos = successor.getGhostPosition(agentIndex)
+                distance = manhattanDistance(ghostPos, pacmanPos)
+                scoredActions.append((action, distance))
+
+            if ghostState.scaredTimer > 0:
+                targetDistance = max(distance for _, distance in scoredActions)
+            else:
+                targetDistance = min(distance for _, distance in scoredActions)
+
+            preferred = [action for action, distance in scoredActions
+                         if distance == targetDistance]
+            if len(preferred) == len(legalActions):
+                probability = 1.0 / len(legalActions)
+                return [(action, probability) for action in legalActions]
+
+            directionalProb = 0.8
+            randomProb = 1.0 - directionalProb
+            weights = []
+            for action in legalActions:
+                probability = randomProb / len(legalActions)
+                if action in preferred:
+                    probability += directionalProb / len(preferred)
+                weights.append((action, probability))
+            return weights
+
+        def riskAwareExpectimax(state, depth, agentIndex):
+            if state.isWin() or state.isLose() or depth == self.depth:
+                return self.evaluationFunction(state)
+
+            legalActions = legal_actions_without_stop(state, agentIndex)
+            if not legalActions:
+                return self.evaluationFunction(state)
+
+            nextAgent = (agentIndex + 1) % numAgents
+            nextDepth = depth + 1 if nextAgent == 0 else depth
+
+            if agentIndex == 0:
+                value = float('-inf')
+                for action in legalActions:
+                    successor = state.generateSuccessor(agentIndex, action)
+                    value = max(value, riskAwareExpectimax(successor, nextDepth, nextAgent))
+                return value
+
+            expectedValue = 0
+            for action, probability in ghost_action_weights(state, agentIndex, legalActions):
+                successor = state.generateSuccessor(agentIndex, action)
+                expectedValue += probability * riskAwareExpectimax(successor, nextDepth, nextAgent)
+            return expectedValue
+
+        bestAction = Directions.STOP
+        bestValue = float('-inf')
+
+        for action in legal_actions_without_stop(gameState, 0):
+            successor = gameState.generateSuccessor(0, action)
+            value = riskAwareExpectimax(successor, 0, 1 % numAgents)
+            if value > bestValue:
+                bestValue = value
+                bestAction = action
+
+        return bestAction
+
 def betterEvaluationFunction(currentGameState: GameState):
     """
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
@@ -338,6 +429,52 @@ def betterEvaluationFunction(currentGameState: GameState):
             if ghostDist == 0:
                 return float('-inf')
             score -= 12.0 / ghostDist
+
+    return score
+
+def contestEvaluationFunction(currentGameState: GameState):
+    """
+    Evaluation function used by ContestAgent.
+
+    It keeps the same safety/efficiency/reward balance as betterEvaluationFunction
+    but uses stronger penalties for nearby active ghosts and stronger incentives
+    to finish the board quickly.
+    """
+    if currentGameState.isWin():
+        return float('inf')
+    if currentGameState.isLose():
+        return float('-inf')
+
+    pacmanPos = currentGameState.getPacmanPosition()
+    foodList = currentGameState.getFood().asList()
+    capsules = currentGameState.getCapsules()
+    ghostStates = currentGameState.getGhostStates()
+
+    score = currentGameState.getScore()
+    score -= 4.0 * len(foodList)
+    score -= 18.0 * len(capsules)
+
+    if foodList:
+        foodDistances = [manhattanDistance(pacmanPos, foodPos) for foodPos in foodList]
+        score += 12.0 / (min(foodDistances) + 1)
+        score += 3.0 / (sum(foodDistances) / float(len(foodDistances)) + 1)
+
+    if capsules:
+        capsuleDistances = [manhattanDistance(pacmanPos, capsulePos) for capsulePos in capsules]
+        score += 18.0 / (min(capsuleDistances) + 1)
+
+    for ghostState in ghostStates:
+        ghostDist = manhattanDistance(pacmanPos, ghostState.getPosition())
+        if ghostState.scaredTimer > 0:
+            score += 25.0 / (ghostDist + 1)
+            score += min(ghostState.scaredTimer, 10)
+        else:
+            if ghostDist == 0:
+                return float('-inf')
+            if ghostDist <= 2:
+                score -= 200.0 / ghostDist
+            else:
+                score -= 10.0 / ghostDist
 
     return score
 
