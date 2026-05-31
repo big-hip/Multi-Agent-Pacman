@@ -1,0 +1,18 @@
+file,type,description
+layouts/capsuleClassic.lay,layout,Pacman layout containing capsules for capsule-related behavior tests
+layouts/contestClassic.lay,layout,Contest layout used for ContestAgent experiments with DirectionalGhost
+layouts/mediumClassic.lay,layout,Medium-size classic Pacman layout
+layouts/minimaxClassic.lay,layout,Layout used for minimax-style adversarial search experiments
+layouts/openClassic.lay,layout,Open layout used by ReflexAgent autograder evaluation
+layouts/originalClassic.lay,layout,Original classic Pacman layout
+layouts/powerClassic.lay,layout,Layout emphasizing capsule and power-pellet behavior
+layouts/smallClassic.lay,layout,Small classic layout used for manual search-agent experiments
+layouts/testClassic.lay,layout,Classic test layout used for ReflexAgent gameplay evaluation
+layouts/trappedClassic.lay,layout,Layout where Pacman can be trapped by ghosts
+layouts/trickyClassic.lay,layout,Layout with more difficult movement and ghost interactions
+test_cases/q1,test_group,Autograder tests for ReflexAgent
+test_cases/q2,test_group,Autograder tests for MinimaxAgent
+test_cases/q3,test_group,Autograder tests for AlphaBetaAgent
+test_cases/q4,test_group,Autograder tests for ExpectimaxAgent
+test_cases/q5,test_group,Autograder tests for betterEvaluationFunction
+test_cases/extra,test_group,Optional configuration for ContestAgent
